@@ -171,6 +171,47 @@ app.post('/user/menu', auth, (req, res) => {
 	})
 })
 
+//모든 가게 정보 반환  
+app.get('/store', (req, res) => {
+	var sql = `SELECT * FROM store;`
+
+	connection.query(sql, function(err, result) { 
+		if(err) {
+			return res.status(400);
+		}
+		return res.status(200).send(result);
+	})
+})
+
+//가게 추가 
+app.post('/store', (req, res) => {
+	console.log(req.body);
+	var sql = `INSERT INTO store (store_uuid, store_name, store_address, store_call_number, category, photo, regular_count) VALUES (?,?,?,?,?,?,?);`
+	const store_uuid = uuid4();
+
+	var values = [store_uuid, req.body.store_name, req.body.store_address, 
+		req.body.store_call_number, req.body.category, req.body.photo, req.body.regular_count];
+	connection.query(sql, values, function(err) {
+		if(err) return res.status(400)
+		return res.status(200)
+	})
+})
+
+//특정 카테고리에 해당하는 가게 반환
+app.get('/store/:category', (req, res) => {
+	const category = req.params.category;
+	var sql = `SELECT * FROM store WHERE category=?;`
+
+	connection.query(sql, category, function(err, result) {
+		if(err) return res.status(400);
+		return res.status(200).send(result)
+	})
+})
+
+//가게 이름 검색 결과 반환 
+
+
+
 app.listen(port, ()=> {
 	console.log(`Kiwee app listening port ${port}`)
 })
