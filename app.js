@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 const uuid4 = require('uuid4');
 const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
+const auth = require('./middleware/authMiddleware');
+
 require('dotenv').config()
 
 //DB 연결 
@@ -16,6 +18,7 @@ connection.query("SET time_zone='Asia/Seoul';")
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }))
 
+//회원가입 요청 
 app.post('/user/register', (req, res) => {
 
 	console.log(req.body);
@@ -67,9 +70,7 @@ app.post('/user/register', (req, res) => {
 	})
 })
 
-/**
- * description: 로그인 요청 함수. 
- */
+//로그인 요청 
 app.post('/user/loginProc', (req, res) => {
 	const user_id = req.body.user_id;
 
@@ -101,7 +102,7 @@ app.post('/user/loginProc', (req, res) => {
 			if(isMatch) {
 				const key = process.env.SECRET_KEY;
 				const token = jwt.sign( 
-					{ user_id: user_id },
+					{ user_uuid: result[0].user_uuid },
 					key, 
 					{ expiresIn: "24h" }
 				)
@@ -125,6 +126,51 @@ app.post('/user/loginProc', (req, res) => {
 })
 
 
+//회원 정보 반환 
+app.get('/user', auth, (req, res) => {
+	var sql = `SELECT id, user_uuid, user_id, is_owner, user_address, user_phone_number  FROM user WHERE user_uuid=?;`
+	connection.query(sql, req.decoded.user_uuid, function(err, result) {
+		if(err) {
+			console.log(err);
+			return res.status(400)
+		}
+
+		return res.status(200).send(result[0]);
+	})
+})
+
+//유저의 메뉴 리스트 반환 
+app.get('/user/menu', auth, (req, res) => {
+
+	var sql = `SELECT menu_list FROM user_menu WHERE user_uuid=?;`
+	connection.query(sql, req.decoded.user_uuid, function(err, result) {
+		if(err) {
+			console.log(err);
+			return res.status(400)
+		}
+
+		return res.status(200).send(result);
+	})
+})
+
+//메뉴 리스트 저장 요청
+app.post('/user/menu', auth, (req, res) => {
+	var sql = `INSERT INTO user_menu (user_uuid, menu_list) VALUES (?, ?);`
+	var values = [req.decoded.user_uuid, req.body.menu_list];
+
+	connection.query(sql, values, function(err) {
+		if(err) {
+			return res.status(400).json({
+				err: err, 
+				menuReg: false,
+			})
+		}
+		return res.status(200).json({
+			menuReg: true,
+		})
+	})
+})
+
 app.listen(port, ()=> {
-	console.log(`express app listening port ${port}`)
+	console.log(`Kiwee app listening port ${port}`)
 })
