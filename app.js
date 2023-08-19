@@ -9,16 +9,22 @@ const auth = require('./middleware/authMiddleware');
 
 require('dotenv').config()
 
-//DB 연결 
+//DB Connection.
 const mysql = require('mysql2')
-const connection = mysql.createConnection(process.env.DATABASE_URL)
-console.log('Connecte to PlanetScale!');
-connection.query("SET time_zone='Asia/Seoul';")
+const connection = mysql.createConnection({
+	host: 'localhost',
+	user: 'root',
+	password: process.env.DB_PW,
+	database: 'kiwee'
+})
+
+//connection.query("SET time_zone='Asia/Seoul';")
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }))
 
-//회원가입 요청 
+
+//Request for Member Register
 app.post('/user/register', (req, res) => {
 
 	console.log(req.body);
@@ -70,7 +76,7 @@ app.post('/user/register', (req, res) => {
 	})
 })
 
-//로그인 요청 
+//Request for Login
 app.post('/user/loginProc', (req, res) => {
 	const user_id = req.body.user_id;
 
@@ -125,8 +131,7 @@ app.post('/user/loginProc', (req, res) => {
 	})
 })
 
-
-//회원 정보 반환 
+//Return User Info
 app.get('/user', auth, (req, res) => {
 	var sql = `SELECT id, user_uuid, user_id, is_owner, user_address, user_phone_number  FROM user WHERE user_uuid=?;`
 	connection.query(sql, req.decoded.user_uuid, function(err, result) {
@@ -139,10 +144,10 @@ app.get('/user', auth, (req, res) => {
 	})
 })
 
-//유저의 메뉴 리스트 반환 
+//Return Menu of User
 app.get('/user/menu', auth, (req, res) => {
 
-	var sql = `SELECT menu_list FROM user_menu WHERE user_uuid=?;`
+	var sql = `SELECT menu_uuid FROM user_menu WHERE user_uuid=?`
 	connection.query(sql, req.decoded.user_uuid, function(err, result) {
 		if(err) {
 			console.log(err);
@@ -153,10 +158,10 @@ app.get('/user/menu', auth, (req, res) => {
 	})
 })
 
-//메뉴 리스트 저장 요청
+//Save User Menu
 app.post('/user/menu', auth, (req, res) => {
-	var sql = `INSERT INTO user_menu (user_uuid, menu_list) VALUES (?, ?);`
-	var values = [req.decoded.user_uuid, req.body.menu_list];
+	var sql = `INSERT INTO user_menu (user_uuid, menu_uuid) VALUES (?, ?);`
+	var values = [req.decoded.user_uuid, req.body.menu_uuid];
 
 	connection.query(sql, values, function(err) {
 		if(err) {
@@ -172,8 +177,17 @@ app.post('/user/menu', auth, (req, res) => {
 })
 
 
+//Return all order history of specific user
+app.get('/user/orderhistory', auth, (req, res) => {
+	var sql = `SELECT * FROM order_history WHERE user_uuid=?`
+	connection.query(sql, req.decoded.user_uuid, function(err, result) {
+		if(err) return res.status(400).send();
+		return res.status(200).send(result);
+	})
+})
 
-//모든 가게 정보 반환  
+
+//Return All Store Info
 app.get('/store/all', (req, res) => {
 	var sql = `SELECT * FROM store;`
 
@@ -185,7 +199,7 @@ app.get('/store/all', (req, res) => {
 	})
 })
 
-//가게 추가 
+//Save New Store
 app.post('/store', (req, res) => {
 
 	var sql = `INSERT INTO store (store_uuid, store_name, store_address, store_call_number, category, photo, regular_count) VALUES (?,?,?,?,?,?,?);`
@@ -199,7 +213,7 @@ app.post('/store', (req, res) => {
 	})
 })
 
-//특정 카테고리에 해당하는 가게 반환
+//Return stores for specific Categories
 app.get('/store/category', (req, res) => {
 	
 	var sql = `SELECT * FROM store WHERE category=?`
@@ -210,7 +224,7 @@ app.get('/store/category', (req, res) => {
 	})
 })
 
-//가게 이름 or 카테고리 검색 결과 반환 
+//Return {store_name} or {category} Search Results
 app.get('/store/search', (req, res) => {
 	
 	var keyword = req.query.string.trim().split(' ');
@@ -227,7 +241,7 @@ app.get('/store/search', (req, res) => {
 	})
 })
 
-//store_uuid에 해당하는 가게 정보 반환 
+//Return Store Info corresponding to {store_uuid}
 app.get('/store', (req, res) => {
 	var sql = `SELECT * FROM store WHERE store_uuid=?`
 	connection.query(sql, req.query.store_uuid, function(err, result) {
@@ -238,7 +252,7 @@ app.get('/store', (req, res) => {
 	})
 })
 
-//특정 식당 메뉴 반환 
+//Returns a specific store menu
 app.get('/store/menu', (req, res) => {
 	
 	var sql = `SELECT * FROM menu WHERE store_uuid=?`
@@ -249,7 +263,7 @@ app.get('/store/menu', (req, res) => {
 	})
 })
 
-//메뉴 추가 등록 요청 
+//Save New Menu
 app.post('/menu', (req, res) => {
 	const menu_uuid = uuid4();
 
@@ -268,7 +282,7 @@ app.post('/menu', (req, res) => {
 	})
 })
 
-//특정 메뉴에 대한 세부 정보를 반환
+//Returns Info for a specific menu
 app.get('/menu', (req, res) => {
 
 	
@@ -282,10 +296,23 @@ app.get('/menu', (req, res) => {
 	})	
 })
 
+app.get('/menu/storename', (req, res) => {
+	var sql = `SELECT store_uuid FROM menu WHERE menu_uuid=?`
+	connection.query(sql, req.query.menu_uuid, function(err, result) {
+		if(err) {
+			return res.status(400).send(err)
+		}
 
-// order - history 
-
-//주문 요청 
+		sql = `SELECT store_name FROM store WHERE store_uuid=?`
+		connection.query(sql, result[0].store_uuid, function(err, result) {
+			if(err) {
+				return res.status(400).send(err)
+			}
+			return res.status(200).send(result);
+		})
+	})
+})
+//Order Request 
 app.post('/order', auth, (req, res) => {
 	const order_uuid = uuid4(); 
 
@@ -296,15 +323,14 @@ app.post('/order', auth, (req, res) => {
 		if(err) {
 			return res.status(400).send();
 		}
-		res.status(200).send("oooo")
-		//가게 사장님에게 주문 요청 redirection
-
+		return res.status(200).send()
 	})
-		
 })
 
-// 특정 가게의 아직 수락되지 않은 주문 내역 반환
-app.get('/order/disallow', auth, (req, res) => {
+
+
+//Return an order history that has not yet been accepted by a store
+app.get('/order/disallow', (req, res) => {
 
 	var sql = `SELECT * FROM order_history WHERE store_uuid=? AND allowed=0;`
 		
@@ -316,8 +342,16 @@ app.get('/order/disallow', auth, (req, res) => {
 	})
 })
 
+app.put('/order/allow', (req, res) => {
+	var sql = `UPDATE order_history SET allowed=1 WHERE order_uuid=?`
+	connection.query(sql, req.query.order_uuid, function(err) {
+		if(err) return res.status(400).send();
 
-//특정 유저, 특정 가게에 해당하는 주문 내역 반환
+		return res.status(200).send("주문이 수락되었습니다.")
+	})
+})
+
+//Return order history for specific users and specific stores
 app.get('/order/store/user', auth, (req, res) => {
 	var sql = `SELECT * FROM order_history WHERE store_uuid=? AND user_uuid=?`
 	var values = [req.query.store_uuid, req.decoded.user_uuid]
@@ -350,7 +384,7 @@ app.get('/order/store/user', auth, (req, res) => {
 	})
 })
 
-//가게 - 단골 손님 저장 
+//Save Regular User - Store
 app.post('/regular', (req, res) => {
 	var sql = `INSERT INTO regular (user_uuid, store_uuid) VALUES (?,?)`
 	var values = [req.body.user_uuid, req.body.store_uuid]
@@ -361,7 +395,7 @@ app.post('/regular', (req, res) => {
 	})
 })
 
-//user_uuid가 단골로 등록된 store_uuid 반환 
+//Return {store_uuid} with {user_uuid} registered as a regular
 app.get('/regular/user', (req, res) => {
 	var sql = `SELECT store_uuid FROM regular WHERE user_uuid=?`
 	connection.query(sql, req.query.user_uuid, function(err, result) {
@@ -372,7 +406,7 @@ app.get('/regular/user', (req, res) => {
 	})
 })
 
-//가게 store_uuid에  등록된 단골 손님 user_uuid 반환 
+//Return regular user {user_uuid} registered in store_uuid
 app.get('/regular/store', (req, res) => {
 	var sql = `SELECT user_id FROM regular WHERE store_uuid=?`
 	connection.query(sql, req.query.store_uuid, function(err, result) {
@@ -382,6 +416,7 @@ app.get('/regular/store', (req, res) => {
 		return res.status(200).send(result);
 	})
 })
+
 
 
 app.listen(port, '0.0.0.0', ()=> {
