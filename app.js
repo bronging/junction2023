@@ -171,6 +171,8 @@ app.post('/user/menu', auth, (req, res) => {
 	})
 })
 
+
+
 //모든 가게 정보 반환  
 app.get('/store', (req, res) => {
 	var sql = `SELECT * FROM store;`
@@ -185,21 +187,22 @@ app.get('/store', (req, res) => {
 
 //가게 추가 
 app.post('/store', (req, res) => {
-	console.log(req.body);
+
 	var sql = `INSERT INTO store (store_uuid, store_name, store_address, store_call_number, category, photo, regular_count) VALUES (?,?,?,?,?,?,?);`
 	const store_uuid = uuid4();
 
 	var values = [store_uuid, req.body.store_name, req.body.store_address, 
 		req.body.store_call_number, req.body.category, req.body.photo, req.body.regular_count];
 	connection.query(sql, values, function(err) {
-		if(err) return res.status(400)
-		return res.status(200)
+		if(err) return res.status(400).send()
+		return res.status(200).send()
 	})
 })
 
 //특정 카테고리에 해당하는 가게 반환
-app.get('/store/:category', (req, res) => {
-	const category = req.params.category;
+app.post('/store/category', (req, res) => {
+	
+	const category = req.body.category;
 	var sql = `SELECT * FROM store WHERE category=?;`
 
 	connection.query(sql, category, function(err, result) {
@@ -208,9 +211,76 @@ app.get('/store/:category', (req, res) => {
 	})
 })
 
-//가게 이름 검색 결과 반환 
+//가게 이름 or 카테고리 검색 결과 반환 
+app.get('/store/search', (req, res) => {
+	
+	var keyword = req.query.string.trim().split(' ');
+	var string = keyword.join('|');
+	
+	var sql = `SELECT * FROM store WHERE store_name REGEXP '${string}' OR category REGEXP '${string}';`
+
+	connection.query(sql, function(err, result) {
+		if(err) {
+			return res.status(400).send();
+		}
+		console.log(result);
+		return res.status(200).send(result);
+	})
+})
 
 
+
+//특정 식당 메뉴 반환 
+app.get('/store/:store_name/menu', (req, res) => {
+	
+	var sql = `SELECT store_uuid FROM store WHERE store_name='${req.params.store_name}';`
+	connection.query(sql, function(err, result) {
+		if(err || (result.length == 0) ) {
+			return res.status(400).send()
+		}
+		
+		console.log(result);
+		sql = `SELECT * FROM menu WHERE store_uuid=?`
+		connection.query(sql, result[0].store_uuid, function(err, result) {
+			if(err) return res.status(400).send();
+
+			return res.status(200).send(result);
+		})
+	})
+})
+
+//메뉴 추가 등록 요청 
+app.post('/menu', (req, res) => {
+	const menu_uuid = uuid4();
+
+	var sql = `INSERT INTO menu (menu_uuid, menu_name, menu_price, sub_name, photo, store_uuid) VALUES (?,?,?,?,?,?);`
+
+	var values = [menu_uuid, req.body.menu_name, req.body.menu_price, 
+		req.body.sub_name, req.body.photo, req.body.store_uuid];
+
+	
+	connection.query(sql, values, function(err) {
+		if(err) {
+			console.log(err)
+			return res.status(400).send();
+		}
+		return res.status(200).send();
+	})
+})
+
+//특정 메뉴에 대한 세부 정보를 반환
+app.get('/menu', (req, res) => {
+
+	
+	var sql = `SELECT * FROM menu WHERE menu_uuid=?`
+
+	connection.query(sql, req.query.menuid, function(err, result) {
+		if(err || (result.length == 0) ) {
+			return res.status(400).send()
+		}
+		return res.status(200).send(result);
+	})	
+})
 
 app.listen(port, ()=> {
 	console.log(`Kiwee app listening port ${port}`)
