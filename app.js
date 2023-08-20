@@ -168,11 +168,11 @@ app.post('/user/menu', auth, (req, res) => {
 			return res.status(400).json({
 				err: err, 
 				menuReg: false,
-			}).send(err)
+			})
 		}
 		return res.status(200).json({
 			menuReg: true,
-		}).send("your menu saved")
+		})
 	})
 })
 
