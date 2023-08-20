@@ -37,7 +37,7 @@ app.post('/user/register', (req, res) => {
 		if(result.length != 0) {
 			return res.json({
 				registerSuccess: false, 
-				message: '이미 존재하는 아이디입니다.',
+				message: 'This ID already exists.',
 			})
 		}
 	})
@@ -95,7 +95,7 @@ app.post('/user/loginProc', (req, res) => {
 				.json({
 					loginSuccess: false, 
 					errcode: 1,
-					message: "존재하지 않는 아이디입니다.",
+					message: "Please check your ID.",
 				})
 		}
 		
@@ -116,7 +116,7 @@ app.post('/user/loginProc', (req, res) => {
 				return res.status(200).json( {
 					loginSuccess: true,
 					token: token,
-					message: "로그인 성공"
+					message: "Login successfully."
 				})
 			}
 			
@@ -124,8 +124,8 @@ app.post('/user/loginProc', (req, res) => {
 			return res.status(400).json({
 				loginSuccess: false, 
 				errcode: 2,
-				message: "비밀번호가 틀렸습니다.",
-			})
+				message: "Please check your Password.",
+			}).send("Please check your Password.")
 		})
 		
 	})
@@ -137,7 +137,7 @@ app.get('/user', auth, (req, res) => {
 	connection.query(sql, req.decoded.user_uuid, function(err, result) {
 		if(err) {
 			console.log(err);
-			return res.status(400)
+			return res.status(400).send(err)
 		}
 
 		return res.status(200).send(result[0]);
@@ -151,7 +151,7 @@ app.get('/user/menu', auth, (req, res) => {
 	connection.query(sql, req.decoded.user_uuid, function(err, result) {
 		if(err) {
 			console.log(err);
-			return res.status(400)
+			return res.status(400).send(err)
 		}
 
 		return res.status(200).send(result);
@@ -168,20 +168,19 @@ app.post('/user/menu', auth, (req, res) => {
 			return res.status(400).json({
 				err: err, 
 				menuReg: false,
-			})
+			}).send(err)
 		}
 		return res.status(200).json({
 			menuReg: true,
-		})
+		}).send("your menu saved")
 	})
 })
-
 
 //Return all order history of specific user
 app.get('/user/orderhistory', auth, (req, res) => {
 	var sql = `SELECT * FROM order_history WHERE user_uuid=?`
 	connection.query(sql, req.decoded.user_uuid, function(err, result) {
-		if(err) return res.status(400).send();
+		if(err) return res.status(400).send(err);
 		return res.status(200).send(result);
 	})
 })
@@ -193,7 +192,7 @@ app.get('/store/all', (req, res) => {
 
 	connection.query(sql, function(err, result) { 
 		if(err) {
-			return res.status(400);
+			return res.status(400).send(err);
 		}
 		return res.status(200).send(result);
 	})
@@ -208,8 +207,8 @@ app.post('/store', (req, res) => {
 	var values = [store_uuid, req.body.store_name, req.body.store_address, 
 		req.body.store_call_number, req.body.category, req.body.photo, req.body.regular_count];
 	connection.query(sql, values, function(err) {
-		if(err) return res.status(400).send()
-		return res.status(200).send()
+		if(err) return res.status(400).send(err)
+		return res.status(200).send("you store saved.")
 	})
 })
 
@@ -219,7 +218,7 @@ app.get('/store/category', (req, res) => {
 	var sql = `SELECT * FROM store WHERE category=?`
 
 	connection.query(sql, req.query.category, function(err, result) {
-		if(err) return res.status(400);
+		if(err) return res.status(400).send(err);
 		return res.status(200).send(result)
 	})
 })
@@ -234,7 +233,7 @@ app.get('/store/search', (req, res) => {
 
 	connection.query(sql, function(err, result) {
 		if(err) {
-			return res.status(400).send();
+			return res.status(400).send(err);
 		}
 		console.log(result);
 		return res.status(200).send(result);
@@ -246,7 +245,7 @@ app.get('/store', (req, res) => {
 	var sql = `SELECT * FROM store WHERE store_uuid=?`
 	connection.query(sql, req.query.store_uuid, function(err, result) {
 		if(err) {
-			return res.status(400).send()
+			return res.status(400).send(err)
 		}
 		return res.status(200).send(result)
 	})
@@ -257,7 +256,7 @@ app.get('/store/menu', (req, res) => {
 	
 	var sql = `SELECT * FROM menu WHERE store_uuid=?`
 	connection.query(sql, req.query.store_uuid, function(err, result) {
-		if(err) return res.status(400).send();
+		if(err) return res.status(400).send(err);
 
 		return res.status(200).send(result);
 	})
@@ -276,9 +275,9 @@ app.post('/menu', (req, res) => {
 	connection.query(sql, values, function(err) {
 		if(err) {
 			console.log(err)
-			return res.status(400).send();
+			return res.status(400).send(err);
 		}
-		return res.status(200).send();
+		return res.status(200).send("New menu saved.");
 	})
 })
 
@@ -290,7 +289,7 @@ app.get('/menu', (req, res) => {
 
 	connection.query(sql, req.query.menuid, function(err, result) {
 		if(err || (result.length == 0) ) {
-			return res.status(400).send()
+			return res.status(400).send(err)
 		}
 		return res.status(200).send(result);
 	})	
@@ -321,12 +320,11 @@ app.post('/order', auth, (req, res) => {
 
 	connection.query(sql, values, function(err) {
 		if(err) {
-			return res.status(400).send();
+			return res.status(400).send(err);
 		}
-		return res.status(200).send()
+		return res.status(200).send("Order requested.")
 	})
 })
-
 
 
 //Return an order history that has not yet been accepted by a store
@@ -336,7 +334,7 @@ app.get('/order/disallow', (req, res) => {
 		
 	connection.query(sql, req.query.store_uuid, function(err, result) {
 		if(err) {
-			return res.status(400).send();
+			return res.status(400).send(err);
 		}
 		return res.status(200).send(result);
 	})
@@ -347,7 +345,7 @@ app.put('/order/allow', (req, res) => {
 	connection.query(sql, req.query.order_uuid, function(err) {
 		if(err) return res.status(400).send();
 
-		return res.status(200).send("주문이 수락되었습니다.")
+		return res.status(200).send("Your order has been accepted.")
 	})
 })
 
@@ -357,7 +355,7 @@ app.get('/order/store/user', auth, (req, res) => {
 	var values = [req.query.store_uuid, req.decoded.user_uuid]
 	connection.query(sql, values, function(err, result) {
 		if(err) {
-			return res.status(400).send()
+			return res.status(400).send(err)
 		}
 
 		const curr_cnt = result.length;
@@ -366,7 +364,7 @@ app.get('/order/store/user', auth, (req, res) => {
 		//단골 등록 가능한지 확인 
 		sql = `SELECT reqular_point FROM store WHERE store_uuid=?`
 		connection.query(sql, function(err, result) {
-			if(err) return res.status(400).send()
+			if(err) return res.status(400).send(err)
 
 			//만약 가게에서 설정한 단골 기준을 넘었으면 regular-tb에 등록
 			if(result[0].regular_count <= curr_cnt) {
@@ -374,8 +372,8 @@ app.get('/order/store/user', auth, (req, res) => {
 				var values = [req.query.user_uuid, req.query.store_uuid]
 
 				connection.query(sql, values, function(err) {
-					if(err) return res.status(400).send("regular 데이터 추가 실패")
-					return res.status(200).send("regular 데이터 추가")
+					if(err) return res.status(400).send(err)
+					return res.status(200).send("New regular user saved.")
 				})
 			}
 		})
@@ -390,8 +388,8 @@ app.post('/regular', (req, res) => {
 	var values = [req.body.user_uuid, req.body.store_uuid]
 
 	connection.query(sql, values, function(err) {
-		if(err) return res.status(400).send("regular 데이터 추가 실패")
-		return res.status(200).send("regular 데이터 추가")
+		if(err) return res.status(400).send(err)
+		return res.status(200).send("New regular user saved.")
 	})
 })
 
@@ -400,7 +398,7 @@ app.get('/regular/user', (req, res) => {
 	var sql = `SELECT store_uuid FROM regular WHERE user_uuid=?`
 	connection.query(sql, req.query.user_uuid, function(err, result) {
 		if(err) {
-			return res.status(400).send()
+			return res.status(400).send(err)
 		}
 		return res.status(200).send(result);
 	})
@@ -411,7 +409,7 @@ app.get('/regular/store', (req, res) => {
 	var sql = `SELECT user_id FROM regular WHERE store_uuid=?`
 	connection.query(sql, req.query.store_uuid, function(err, result) {
 		if(err) {
-			return res.status(400).send()
+			return res.status(400).send(err)
 		}
 		return res.status(200).send(result);
 	})
